@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Qi Gong Timer</title>
+
+<!-- Home Screen / PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Qi Gong">
+<meta name="theme-color" content="#1a1816">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Libre+Franklin:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(170deg, #1a1816 0%, #221f1b 50%, #1a1816 100%);
+    font-family: 'Libre Franklin', sans-serif;
+    color: #e8e0d6;
+    display: flex;
+    justify-content: center;
+    padding: calc(24px + env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
+  }
+
+  .app { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; }
+
+  .mono { font-family: 'DM Mono', monospace; }
+  .dim { color: rgba(232,224,214,0.35); }
+  .dim2 { color: rgba(232,224,214,0.4); }
+  .dim3 { color: rgba(232,224,214,0.3); }
+
+  /* ---- MENU ---- */
+  #menu { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  #menu .tag { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 8px; }
+  #menu h1 { font-size: 32px; font-weight: 300; letter-spacing: 1px; margin-bottom: 6px; }
+  #menu .sub { font-size: 14px; margin-bottom: 40px; }
+  .cards { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 24px 22px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s ease;
+  }
+  .card:hover { transform: translateY(-2px); }
+  .card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .card-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 500;
+  }
+  .card-title { font-size: 18px; font-weight: 600; }
+  .card-subtitle { font-size: 12px; }
+  .card-meta { font-size: 12px; display: flex; gap: 16px; }
+
+  /* ---- TIMER ---- */
+  #timer { width: 100%; display: none; flex-direction: column; align-items: center; }
+  #timer.active { display: flex; }
+
+  .timer-header { display: flex; align-items: center; width: 100%; margin-bottom: 20px; }
+  .back-btn {
+    background: none; border: none; color: rgba(232,224,214,0.4);
+    cursor: pointer; font-size: 14px; font-family: 'Libre Franklin', sans-serif;
+    padding: 6px 0;
+  }
+  .back-btn:hover { color: rgba(232,224,214,0.7); }
+  .routine-label { flex: 1; text-align: center; font-size: 14px; font-weight: 600; }
+
+  .circle-wrap { margin-bottom: 8px; width: 240px; height: 240px; }
+
+  .move-name { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 4px; }
+  .move-desc { font-size: 13px; text-align: center; margin-bottom: 20px; }
+
+  .controls { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; }
+  .ctrl-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(232,224,214,0.5); cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.1); }
+  .play-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: none; cursor: pointer; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .progress-bar { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 20px; }
+  .progress-track { flex: 1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .progress-time { font-size: 11px; }
+
+  .step-list { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+  .step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 10px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+  }
+  .step.active { border-left-color: var(--accent); background: var(--accent-bg); }
+  .step.done { opacity: 0.35; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.3s ease;
+    background: rgba(255,255,255,0.06); color: rgba(232,224,214,0.4);
+  }
+  .step.active .step-num { font-weight: 700; color: #1a1816; }
+  .step.done .step-num { color: #1a1816; }
+  .step-info { flex: 1; min-width: 0; }
+  .step-name {
+    font-size: 14px; color: rgba(232,224,214,0.55);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .step.active .step-name { font-weight: 600; color: #e8e0d6; }
+  .step-desc { font-size: 12px; color: rgba(232,224,214,0.4); margin-top: 2px; display: none; }
+  .step.active .step-desc { display: block; }
+  .step-dur { font-size: 12px; flex-shrink: 0; }
+
+  /* ---- FINISHED ---- */
+  #finished { display: none; flex-direction: column; align-items: center; padding: 60px 20px; text-align: center; }
+  #finished.active { display: flex; }
+  .done-check {
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; margin-bottom: 24px;
+  }
+  #finished h2 { font-weight: 300; font-size: 24px; margin-bottom: 8px; }
+  #finished .done-time { font-size: 14px; margin-bottom: 32px; }
+  .repeat-btn {
+    border-radius: 12px; padding: 12px 28px; cursor: pointer;
+    font-size: 14px; font-family: 'Libre Franklin', sans-serif;
+    margin-bottom: 10px; transition: opacity 0.2s;
+  }
+  .repeat-btn:hover { opacity: 0.8; }
+  .menu-btn {
+    background: none; border: none; color: rgba(232,224,214,0.4);
+    cursor: pointer; font-size: 13px; font-family: 'Libre Franklin', sans-serif;
+  }
+  .menu-btn:hover { color: rgba(232,224,214,0.7); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- MENU -->
+  <div id="menu">
+    <div class="tag mono dim3">氣功</div>
+    <h1>Qi Gong Timer</h1>
+    <p class="sub dim">Pick a routine — 5 minutes each</p>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <!-- TIMER -->
+  <div id="timer">
+    <div class="timer-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="routine-label" id="routineLabel"></div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="circle-wrap">
+      <svg viewBox="0 0 220 220" width="240" height="240" id="circleSvg">
+        <circle cx="110" cy="110" r="90" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+        <circle id="arcCircle" cx="110" cy="110" r="90" fill="none" stroke-width="8"
+          stroke-linecap="round" transform="rotate(-90 110 110)"
+          style="transition: stroke-dashoffset 0.3s ease"/>
+        <text id="timeText" x="110" y="105" text-anchor="middle" fill="#e8e0d6"
+          font-size="42" font-family="'DM Mono', monospace" font-weight="400"></text>
+        <text id="totalText" x="110" y="135" text-anchor="middle" fill="rgba(232,224,214,0.35)"
+          font-size="13" font-family="'DM Mono', monospace"></text>
+      </svg>
+    </div>
+    <div class="move-name" id="moveName"></div>
+    <div class="move-desc dim2" id="moveDesc"></div>
+    <div class="controls">
+      <button class="ctrl-btn" onclick="prevStep()">⏮</button>
+      <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" onclick="nextStep()">⏭</button>
+    </div>
+    <div class="progress-bar">
+      <span class="progress-time mono dim3" id="elapsedText"></span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-time mono dim3" id="totalTimeText"></span>
+    </div>
+    <div class="step-list" id="stepList"></div>
+  </div>
+
+  <!-- FINISHED -->
+  <div id="finished">
+    <div class="done-check" id="doneCheck">✓</div>
+    <h2>Done</h2>
+    <p class="done-time dim2" id="doneTime"></p>
+    <button class="repeat-btn" id="repeatBtn" onclick="repeatRoutine()">Repeat</button>
+    <button class="menu-btn" onclick="showMenu()">Back to routines</button>
+  </div>
+
+</div>
+
+<script>
+const ROUTINES = {
+  A: {
+    name: "Shake & Swing", subtitle: "Fluid & flowy", color: "#7eb8a0",
+    steps: [
+      { name: "Lymphatic Hops", duration: 30, desc: "Light bouncing, shake it all loose" },
+      { name: "U-Shaped Arm Swings", duration: 45, desc: "Swing arms left to right in a parabola" },
+      { name: "Arms Down & Up Together", duration: 45, desc: "Both arms swing down and up in front" },
+      { name: "Body Waves", duration: 45, desc: "Let a wave ripple through your whole body" },
+      { name: "Torso Twist + Chest Taps", duration: 60, desc: "Twist and let arms flop, tapping chest" },
+      { name: "Horse Stance Rotation", duration: 45, desc: "Wide stance, rotate through the torso" },
+      { name: "Full Body Tapping", duration: 30, desc: "Tap it all out head to toe" },
+    ],
+  },
+  B: {
+    name: "Loosen Up", subtitle: "Joint mobility & isolation", color: "#c4956a",
+    steps: [
+      { name: "Jumping + Floppy Hands", duration: 30, desc: "Jump lightly, hands flop at your sides" },
+      { name: "Rag Dolls", duration: 45, desc: "Fold forward, let everything hang and sway" },
+      { name: "Arm Swings", duration: 45, desc: "Relaxed alternating arm swings" },
+      { name: "Knee Lifts + Taps", duration: 60, desc: "Alternate knees, tap leg and hip" },
+      { name: "Bring It Around Town", duration: 45, desc: "Hands on hips, big torso circles — switch halfway" },
+      { name: "T-Pose Arm Rotations", duration: 45, desc: "Arms out, rotate them in circles" },
+      { name: "Wrist Rolls", duration: 30, desc: "Roll those wrists out, both directions" },
+    ],
+  },
+  C: {
+    name: "Full Flow", subtitle: "Complete full-body pass", color: "#8a9cc5",
+    steps: [
+      { name: "Lymphatic Hops", duration: 30, desc: "Light bouncing to wake everything up" },
+      { name: "Drop Down Arms", duration: 30, desc: "Let arms drop heavy and swing" },
+      { name: "Arms Down & Up Separated", duration: 45, desc: "Each arm swings independently" },
+      { name: "Bent-Elbow Arm Swings", duration: 45, desc: "Alternating swings with bent elbows" },
+      { name: "Bent Torso Rotation", duration: 45, desc: "Slightly bent, rotate with bent elbows" },
+      { name: "Big Stretch + Toe Touch", duration: 45, desc: "Reach high, then fold to toes" },
+      { name: "Jumping + Torso Rotation", duration: 30, desc: "Light jumps with rotational twist" },
+      { name: "Full Body Tapping", duration: 30, desc: "Tap everything out to finish" },
+    ],
+  },
+};
+
+let currentKey = null;
+let currentStep = 0;
+let timeLeft = 0;
+let running = false;
+let intervalId = null;
+let audioCtx = null;
+
+const CIRC = 2 * Math.PI * 90;
+
+function fmt(s) {
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+function totalTime(key) {
+  return ROUTINES[key].steps.reduce((a, s) => a + s.duration, 0);
+}
+
+function playTone(freq, dur) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine"; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+
+// Build menu cards
+function buildMenu() {
+  const container = document.getElementById("cards");
+  container.innerHTML = "";
+  for (const [key, r] of Object.entries(ROUTINES)) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.borderColor = r.color + "30";
+    card.onmouseenter = () => { card.style.background = r.color + "10"; card.style.borderColor = r.color + "60"; };
+    card.onmouseleave = () => { card.style.background = "rgba(255,255,255,0.03)"; card.style.borderColor = r.color + "30"; };
+    card.onclick = () => startRoutine(key);
+    card.innerHTML = `
+      <div class="card-head">
+        <div class="card-icon mono" style="background:${r.color}20;color:${r.color}">${key}</div>
+        <div>
+          <div class="card-title">${r.name}</div>
+          <div class="card-subtitle dim2">${r.subtitle}</div>
+        </div>
+      </div>
+      <div class="card-meta mono dim3">
+        <span>${r.steps.length} movements</span>
+        <span>${fmt(totalTime(key))}</span>
+      </div>`;
+    container.appendChild(card);
+  }
+}
+
+function showMenu() {
+  running = false; clearInterval(intervalId);
+  document.getElementById("menu").style.display = "flex";
+  document.getElementById("timer").classList.remove("active");
+  document.getElementById("finished").classList.remove("active");
+}
+
+function startRoutine(key) {
+  currentKey = key; currentStep = 0;
+  timeLeft = ROUTINES[key].steps[0].duration;
+  running = false; clearInterval(intervalId);
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("finished").classList.remove("active");
+  document.getElementById("timer").classList.add("active");
+  render();
+}
+
+function repeatRoutine() { startRoutine(currentKey); }
+
+function getElapsed() {
+  const steps = ROUTINES[currentKey].steps;
+  let e = 0;
+  for (let i = 0; i < currentStep; i++) e += steps[i].duration;
+  e += steps[currentStep].duration - timeLeft;
+  return e;
+}
+
+function render() {
+  const r = ROUTINES[currentKey];
+  const step = r.steps[currentStep];
+  const color = r.color;
+
+  document.getElementById("routineLabel").style.color = color;
+  document.getElementById("routineLabel").textContent = r.name;
+
+  // Circle
+  const progress = 1 - timeLeft / step.duration;
+  const arc = document.getElementById("arcCircle");
+  arc.setAttribute("stroke", color);
+  arc.setAttribute("stroke-dasharray", CIRC);
+  arc.setAttribute("stroke-dashoffset", CIRC * (1 - progress));
+  document.getElementById("timeText").textContent = fmt(timeLeft);
+  document.getElementById("totalText").textContent = "of " + fmt(step.duration);
+
+  // Movement info
+  document.getElementById("moveName").textContent = step.name;
+  document.getElementById("moveDesc").textContent = step.desc;
+
+  // Play button
+  const playBtn = document.getElementById("playBtn");
+  playBtn.textContent = running ? "⏸" : "▶";
+  playBtn.style.background = running ? "rgba(255,255,255,0.08)" : color;
+  playBtn.style.color = running ? "#e8e0d6" : "#1a1816";
+
+  // Progress bar
+  const elapsed = getElapsed();
+  const total = totalTime(currentKey);
+  document.getElementById("elapsedText").textContent = fmt(elapsed);
+  document.getElementById("totalTimeText").textContent = fmt(total);
+  document.getElementById("progressFill").style.width = (elapsed / total * 100) + "%";
+  document.getElementById("progressFill").style.background = color;
+
+  // Step list
+  const list = document.getElementById("stepList");
+  list.innerHTML = "";
+  r.steps.forEach((s, i) => {
+    const isActive = i === currentStep;
+    const isDone = i < currentStep;
+    const div = document.createElement("div");
+    div.className = "step" + (isActive ? " active" : "") + (isDone ? " done" : "");
+    div.style.setProperty("--accent", color);
+    div.style.setProperty("--accent-bg", color + "18");
+    const numBg = isDone ? color + "40" : isActive ? color : "rgba(255,255,255,0.06)";
+    const numColor = isDone || isActive ? "#1a1816" : "rgba(232,224,214,0.4)";
+    div.innerHTML = `
+      <div class="step-num" style="background:${numBg};color:${numColor}">${isDone ? "✓" : i + 1}</div>
+      <div class="step-info">
+        <div class="step-name">${s.name}</div>
+        <div class="step-desc">${s.desc}</div>
+      </div>
+      <div class="step-dur mono dim3">${fmt(s.duration)}</div>`;
+    list.appendChild(div);
+  });
+}
+
+function togglePlay() {
+  running = !running;
+  if (running) {
+    intervalId = setInterval(tick, 1000);
+  } else {
+    clearInterval(intervalId);
+  }
+  render();
+}
+
+function tick() {
+  if (timeLeft <= 1) {
+    playTone(660, 0.3);
+    setTimeout(() => playTone(880, 0.4), 150);
+    const next = currentStep + 1;
+    if (next >= ROUTINES[currentKey].steps.length) {
+      running = false; clearInterval(intervalId);
+      showFinished();
+      return;
+    }
+    currentStep = next;
+    timeLeft = ROUTINES[currentKey].steps[next].duration;
+  } else {
+    if (timeLeft === 4) playTone(440, 0.15);
+    timeLeft--;
+  }
+  render();
+}
+
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    timeLeft = ROUTINES[currentKey].steps[currentStep].duration;
+    render();
+  }
+}
+
+function nextStep() {
+  if (currentStep < ROUTINES[currentKey].steps.length - 1) {
+    currentStep++;
+    timeLeft = ROUTINES[currentKey].steps[currentStep].duration;
+    render();
+  }
+}
+
+function showFinished() {
+  const r = ROUTINES[currentKey];
+  document.getElementById("timer").classList.remove("active");
+  document.getElementById("finished").classList.add("active");
+  document.getElementById("doneCheck").style.background = r.color + "20";
+  document.getElementById("doneTime").textContent = fmt(totalTime(currentKey)) + " of movement — nice work";
+  document.getElementById("repeatBtn").style.background = r.color + "20";
+  document.getElementById("repeatBtn").style.border = "1px solid " + r.color + "40";
+  document.getElementById("repeatBtn").style.color = r.color;
+}
+
+buildMenu();
+
+// Register service worker for PWA offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
