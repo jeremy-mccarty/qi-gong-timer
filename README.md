@@ -14,7 +14,7 @@ Each routine runs about 5 minutes. The timer chimes when it's time to switch mov
 
 ## Use It
 
-**The app is live at [`https://<your-username>.github.io/qi-gong-timer/`](https://<your-username>.github.io/qi-gong-timer/)**
+**The app is live at [`https://jeremy-mccarty.github.io/qi-gong-timer/`](https://jeremy-mccarty.github.io/qi-gong-timer/)**
 
 ### Add to Home Screen (iOS / Android)
 
