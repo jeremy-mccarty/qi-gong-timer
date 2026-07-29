@@ -43,3 +43,11 @@ Add, remove, or tweak steps as needed. If you change anything, bump the cache ve
 ## Built With
 
 Vanilla HTML, CSS, and JavaScript. No frameworks, no build tools, no dependencies.
+
+## A Note
+
+This app is vibe coded — built with AI assistance rather than hand-written line by line. Use at your own risk.
+
+## License
+
+MIT
